@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
 using DotRush.Common.Logging;
+using DotRush.Roslyn.CodeAnalysis.Diagnostics;
 using DotRush.Roslyn.Server.Extensions;
 using DotRush.Roslyn.Server.Handlers.ExternalAccess;
 using DotRush.Roslyn.Server.Handlers.TextDocument;
@@ -57,6 +59,7 @@ public class Program {
     private static async Task OnInitializeAsync(InitializeParams parameters, ServerInfo serverInfo) {
         ConfigureProcessObserver(parameters.ProcessId);
         ConfigureServerInfo(serverInfo);
+        ConfigureDiagnosticMessageCulture(parameters.Locale);
 
         await configurationService.InitializeTask.ConfigureAwait(false);
         if (!workspaceService.InitializeWorkspace())
@@ -68,6 +71,17 @@ public class Program {
 
         _ = languageServer.SendNotification(Resources.LoadCompletedNotification, null);
         _ = languageServer.Client.RefreshWorkspaceTokens();
+    }
+
+    private static void ConfigureDiagnosticMessageCulture(string? locale) {
+        if (!string.IsNullOrWhiteSpace(locale)) {
+            try {
+                DiagnosticContext.MessageCulture = CultureInfo.GetCultureInfo(locale);
+            }
+            catch (CultureNotFoundException) {
+                CurrentSessionLogger.Debug($"Unsupported client locale '{locale}'. Falling back to English diagnostic messages.");
+            }
+        }
     }
 
     private static void ConfigureProcessObserver(int? pid) {
