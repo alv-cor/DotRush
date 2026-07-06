@@ -129,6 +129,24 @@
         {
           "command": "dotrush.clean",
           "when": "false"
+        },
+        {
+          "command": "dotrush.launchAssociatedProject",
+          "when": "dotrush.statusBarEnabled && editorLangId == csharp"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "dotrush.launchAssociatedProject",
+          "group": "navigation@1",
+          "when": "dotrush.statusBarEnabled && editorLangId == csharp"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "dotrush.launchAssociatedProject",
+          "group": "navigation@1",
+          "when": "dotrush.statusBarEnabled && editorLangId == csharp"
         }
       ],
       "debug/toolBar": [
@@ -205,6 +223,12 @@
         "command": "dotrush.clean",
         "category": "%extension.displayName%",
         "title": "%command.title.clean%"
+      },
+      {
+        "command": "dotrush.launchAssociatedProject",
+        "category": "%extension.displayName%",
+        "icon": "$(debug-start)",
+        "title": "%command.title.launchAssociatedProject%"
       },
       {
         "command": "dotrush.attachTraceProfiler",

@@ -9,6 +9,7 @@
 	"command.title.build": "Build",
 	"command.title.restore": "Restore",
 	"command.title.clean": "Clean",
+	"command.title.launchAssociatedProject": "Launch Associated Project",
 	"command.title.attachTraceProfiler": "Attach Trace Profiler",
 	"command.title.createHeapDump": "Create Heap Dump",
 	"command.title.createNewProject": "Create New Project",

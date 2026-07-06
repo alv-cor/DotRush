@@ -1,6 +1,7 @@
 import { ContextMenuController } from './controllers/contextMenuController';
 import { DebugAdapterController } from './controllers/debugAdapterController';
 import { LanguageServerController } from './controllers/languageServerController';
+import { LaunchController } from './controllers/launchController';
 import { StateController } from './controllers/stateController';
 import { StatusBarController } from './controllers/statusbarController';
 import { TemplateHostController } from './controllers/templateHostController';
@@ -19,6 +20,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		StateController.activate(context);
 		StatusBarController.activate(context);
 		ContextMenuController.activate(context);
+		LaunchController.activate(context);
 		TestExplorerController.activate(context);
 		LanguageServerController.activate(context);
 	}

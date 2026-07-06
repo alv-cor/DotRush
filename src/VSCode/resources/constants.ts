@@ -34,6 +34,7 @@ export const commandIdActiveTargetPath = "dotrush.activeTargetPath";
 export const commandIdActiveTargetBinaryPath = "dotrush.activeTargetBinaryPath";
 export const commandIdSetStartupProject = "dotrush.setStartupProject";
 export const commandIdBuildWorkspace = "dotrush.buildWorkspace";
+export const commandIdLaunchAssociatedProject = "dotrush.launchAssociatedProject";
 export const commandIdStatusBarEnabled = "dotrush.statusBarEnabled";
 
 export const taskDefinitionId = "dotrush.task";
@@ -50,6 +51,9 @@ export const messageSelectProjectTitle = "Select a project file";
 export const messageSelectProgramTitle = "Select a Program to Debug";
 export const messageSelectTargetTitle = "Select Project or Solution files";
 export const messageSelectTemplateTitle = "Select a project template";
+export const messageNoCsharpEditor = "Open a C# file to launch its associated project.";
+export const messageNoLaunchTargetFound = "Unable to resolve a launch target for the selected project.";
+export const messageFailedToStartDebugging = "Failed to start debugging for the associated project.";
 export const messageReload = "Reload";
 export const messageInstallingComponentTitle = "Installing component: ";
 export const messageInstallingComponentFailed = "Component installation failed";
