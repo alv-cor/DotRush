@@ -2,6 +2,26 @@
 
 DotRush is a lightweight C# development environment for VS Code (and NeoVim/Zed). It is a **VS Code extension** (TypeScript) that spawns several **.NET processes** for language services, debugging, and diagnostics.
 
+## Agent quick start
+
+When making changes, prefer this validation order for fast feedback:
+
+1. TypeScript client only: run `tsc: watch` VS Code task (or `npm run watch`).
+2. Roslyn server only: `dotnet cake --target=server`.
+3. Debugging components: `dotnet cake --target=debugging`.
+4. Server tests: `dotnet cake --target=test`.
+5. Full package validation: `dotnet cake --target=vsix --configuration=release`.
+
+If only TypeScript files were edited, skip full Cake targets unless a behavior crosses TS/.NET boundaries.
+
+## Safe editing boundaries
+
+- Preferred edit areas: `src/VSCode/**`, `src/DotRush.Roslyn.*`, `src/DotRush.Common/**`, `src/DotRush.Debugging.Host/**`, `src/DotRush.Debugging.Mono/**`.
+- Avoid broad changes in vendored/external code unless explicitly requested:
+	- `src/DotRush.Debugging.MonoLib/**`
+	- `src/DotRush.Debugging.Diagnostics/**`
+- Treat `extension/bin/**` as build/runtime output; do not rely on checked-in artifacts there.
+
 ## Architecture: TS client ↔ .NET processes
 
 The extension is a thin TypeScript client that orchestrates standalone .NET executables. There are three distinct out-of-process backends — do not conflate them:
@@ -36,6 +56,8 @@ Builds use **Cake** ([build.cake](build.cake)), not raw `dotnet`/`npm`. Run via 
 
 TypeScript watch: the `tsc: watch` VS Code task (`tsc -w -p src/VSCode`) or `npm run watch`. Production bundle is webpack (`npm run package`).
 
+Use Cake tasks as the source of truth for build orchestration; `build.cake` defines clean, publish, test, diagnostics, and VSIX packaging flow.
+
 Common build properties (target frameworks, `Nullable`, central package versions) are in [src/Common.Build.props](src/Common.Build.props) and [src/Directory.Packages.props](src/Directory.Packages.props). Server targets `net10.0` (`ServerTargetFramework`); default `TargetFramework` is `net8.0`.
 
 ## Tests (`DotRush.Roslyn.Server.Tests`, NUnit)
@@ -49,3 +71,11 @@ Common build properties (target frameworks, `Nullable`, central package versions
 - The server watches the client PID and self-exits when the IDE process dies (`ConfigureProcessObserver`).
 - DotRush is **C#-only** — no Razor/XAML/CodeLens language features (see README "Limitations").
 - Debuggers are downloaded/installed at runtime into `extension/bin/` by DevHost (`-vsdbg`/`-ncdbg`); they are not committed.
+
+## Key references
+
+- Product/features and user-facing behavior: [README.md](README.md)
+- Build orchestration and packaging: [build.cake](build.cake)
+- TS extension activation and controller wiring: [main.ts](src/VSCode/main.ts)
+- DevHost interop contract: [interop.ts](src/VSCode/interop/interop.ts)
+- Alternative editor setup notes: [src/AltEditors/Readme.md](src/AltEditors/Readme.md)
