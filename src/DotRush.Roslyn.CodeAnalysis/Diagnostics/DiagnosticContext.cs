@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using DotRush.Roslyn.Workspaces.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
@@ -15,11 +16,13 @@ public class AnalyzerDiagnosticContext : DiagnosticContext {
 }
 
 [DebuggerDisplay($"{{{nameof(GetDebuggerDisplay)}(),nq}}")]
-public abstract class DiagnosticContext {
+public abstract class DiagnosticContext
+{
     public Diagnostic Diagnostic { get; }
     public Document? Document { get; } //TODO: Potential memory leak
     public string SourceName { get; }
     public AnalysisScope Scope { get; }
+    public static CultureInfo MessageCulture { get; set; } = CultureInfo.GetCultureInfo("en");
 
     public string? FilePath => Diagnostic.Location.SourceTree?.FilePath;
     public string Id => Diagnostic.Id;
@@ -37,8 +40,9 @@ public abstract class DiagnosticContext {
         Scope = scope;
     }
 
-    public string GetSubject() {
-        var message = Diagnostic.GetMessage();
+    public string GetSubject()
+    {
+        var message = Diagnostic.GetMessage(MessageCulture);
         if (string.IsNullOrEmpty(message))
             return $"Missing subject for {Diagnostic.Id}";
 
