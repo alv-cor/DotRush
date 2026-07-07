@@ -12,3 +12,4 @@ package-lock.json
 node_modules
 extension
 .DS_Store
+dotdash-1.0.0.vsix
