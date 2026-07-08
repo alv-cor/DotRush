@@ -63,6 +63,7 @@ export const messageOpen = "Open";
 export const messageAddToWorkspace = "Add to Workspace";
 
 export const configIdRoslynProjectOrSolutionFiles = "roslyn.projectOrSolutionFiles";
+export const configIdRoslynShowReferencesCodeLens = "roslyn.showReferencesCodeLens";
 export const configIdDebuggerProjectAssembliesOnly = "debugger.projectAssembliesOnly";
 export const configIdDebuggerStepOverPropertiesAndOperators = "debugger.stepOverPropertiesAndOperators";
 export const configIdDebuggerConsole = "debugger.console";
