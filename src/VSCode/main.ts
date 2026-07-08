@@ -1,3 +1,4 @@
+import { CodeLensController } from './controllers/codeLensController';
 import { ContextMenuController } from './controllers/contextMenuController';
 import { DebugAdapterController } from './controllers/debugAdapterController';
 import { LanguageServerController } from './controllers/languageServerController';
@@ -12,25 +13,26 @@ import { PublicExports } from './publicExports';
 import * as vscode from 'vscode';
 
 export async function activate(context: vscode.ExtensionContext) {
-	const exports = new PublicExports();
-	Interop.initialize(context.extensionPath);
+    const exports = new PublicExports();
+    Interop.initialize(context.extensionPath);
 
-	if (vscode.workspace.workspaceFolders !== undefined) {
-		StateController.activate(context);
-		StatusBarController.activate(context);
-		ContextMenuController.activate(context);
-		TestExplorerController.activate(context);
-		LanguageServerController.activate(context);
-	}
+    if (vscode.workspace.workspaceFolders !== undefined) {
+        StateController.activate(context);
+        StatusBarController.activate(context);
+        CodeLensController.activate(context);
+        ContextMenuController.activate(context);
+        TestExplorerController.activate(context);
+        LanguageServerController.activate(context);
+    }
 
-	TemplateHostController.activate(context);
-	DebugAdapterController.activate(context);
-	ModulesView.feature.activate(context);
-	PerformanceView.feature.activate(context);
+    TemplateHostController.activate(context);
+    DebugAdapterController.activate(context);
+    ModulesView.feature.activate(context);
+    PerformanceView.feature.activate(context);
 
-	return exports;
+    return exports;
 }
 export function deactivate() {
-	StateController.deactivate();
-	LanguageServerController.stop();
+    StateController.deactivate();
+    LanguageServerController.stop();
 }
