@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using DotRush.Roslyn.CodeAnalysis.Reflection;
 using DotRush.Roslyn.Server.Services;
 using EmmyLua.LanguageServer.Framework.Protocol.Model.TextEdit;
@@ -10,11 +9,7 @@ using ProtocolModels = EmmyLua.LanguageServer.Framework.Protocol.Message.Complet
 
 namespace DotRush.Roslyn.Server.Extensions;
 
-public static partial class CompletionExtensions {
-    [GeneratedRegex(@"([\\\$}])")]
-    private static partial Regex CreateEscapeRegex();
-    private static Regex EscapeRegex = CreateEscapeRegex();
-
+public static class CompletionExtensions {
     public static ProtocolModels.CompletionItemKind ToCompletionItemKind(this CompletionItem item) {
         if (item.Tags.Length == 0)
             return ProtocolModels.CompletionItemKind.Text;
@@ -69,16 +64,12 @@ public static partial class CompletionExtensions {
 
         return false;
     }
-    public static bool ShouldResolveImmediately(this CompletionItem item) {
-        if (!item.IsComplexTextEdit)
-            return false;
-
-        if (item.HasPriority() || item.Tags.Contains(WellKnownTags.Snippet))
-            return true; // .for case
-        if (item.Properties.TryGetValue("Modifiers", out var modifier) && modifier.Contains("Override"))
-            return true; // override case
-
-        return false;
+    public static bool IsAutoUsing(this CompletionItem item) {
+        //(flags & CompletionItemFlags.Expanded) != 0
+        return (InternalCompletionItem.GetFlags(item) & InternalCompletionItem.FlagExpanded) != 0;
+    }
+    public static bool IsSnippet(this CompletionItem item) {
+        return item.Tags.Contains(WellKnownTags.Snippet);
     }
 
     public static TextEdit ToTextEdit(this TextChange change, SourceText sourceText) {
@@ -93,11 +84,24 @@ public static partial class CompletionExtensions {
             Range = change.Span.ToRange(sourceText)
         };
     }
+    public static (TextEdit?, List<AnnotatedTextEdit>) ToTextChanges(this CompletionChange completionChange, SourceText sourceText, int cursorOffset) {
+        var additionalTextEdits = completionChange.TextChanges.Where(x => !x.Span.IntersectsWith(cursorOffset)).Select(x => x.ToAnnotatedTextEdit(sourceText)).ToList();
+        var currentLineTextChanges = completionChange.TextChanges.Where(x => x.Span.IntersectsWith(cursorOffset)).ToList();
+        if (currentLineTextChanges.Count == 0)
+            return (null, additionalTextEdits);
 
-    public static string Escape(string snippet) {
-        if (snippet == null)
-            return string.Empty;
-        return EscapeRegex.Replace(snippet, @"\$1");
+        var currentLineTextChange = currentLineTextChanges.First(); // Single?
+        var snippetText = RemoveIndentation(InternalCompletionChange.GetProperty(completionChange, InternalCompletionChange.SnippetTextKey));
+        var newText = (string.IsNullOrEmpty(snippetText) ? currentLineTextChange.NewText : snippetText) ?? string.Empty;
+        var oldLineCount = additionalTextEdits.Sum(x => x.Range.Height());
+        var newLineCount = additionalTextEdits.SelectMany(x => x.NewText.Split('\n')).Count();
+
+        var textEdit = new TextEdit() {
+            NewText = newText,
+            Range = currentLineTextChange.Span.ToRange(sourceText).Offset(newLineCount - oldLineCount)
+        };
+
+        return (textEdit, additionalTextEdits);
     }
 
     public static Task<CompletionList> GetCompletionsAsync(this CompletionService completionService, Document document, int position, ConfigurationService configurationService, CancellationToken cancellationToken) {
@@ -112,6 +116,35 @@ public static partial class CompletionExtensions {
             return completionService.GetCompletionsAsync(document, position, cancellationToken: cancellationToken);
 
         return InternalCompletionService.GetCompletionsAsync(completionService, document, position, completionOptions, cancellationToken);
+    }
+
+    private static string? RemoveIndentation(string? text) {
+        static int CountIndent(string text) {
+            int result = 0;
+            foreach (var symbol in text) {
+                if (symbol != ' ' && symbol != '\t')
+                    break;
+                result++;
+            }
+            return result;
+        }
+
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        var eol = text.Contains("\r\n") ? "\r\n" : "\n";
+        var lines = text.Split(eol, StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length < 2)
+            return text;
+
+        var minIndent = int.MaxValue;
+        for (int i = 1; i < lines.Length; i++)
+            minIndent = Math.Min(minIndent, CountIndent(lines[i]));
+
+        if (minIndent == int.MaxValue || minIndent == 0)
+            return text;
+
+        return string.Join(eol, lines.Select(x => x.Substring(Math.Min(minIndent, CountIndent(x)))));
     }
 }
 

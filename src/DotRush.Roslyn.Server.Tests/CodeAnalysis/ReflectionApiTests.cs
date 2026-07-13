@@ -176,10 +176,14 @@ public class ReflectionApiTests {
     }
 
     [Test]
-    public void CompletionItemProviderNameTest() {
-        var item = CompletionItem.Create("testItem");
-        var providerName = InternalCompletionItem.GetProviderName(item);
-        Assert.That(providerName, Is.Null);
+    public void CompletionItemFlagsTest() {
+        Assert.That(InternalCompletionItem.flagsProperty, Is.Not.Null);
+        Assert.That(InternalCompletionItem.flagsProperty.PropertyType.IsEnum, Is.True);
+    }
+    [Test]
+    public void CompletionChangeTest() {
+        Assert.That(InternalCompletionChange.propertiesProperty, Is.Not.Null);
+        Assert.That(InternalCompletionChange.propertiesProperty.PropertyType, Is.EqualTo(typeof(ImmutableDictionary<string, string>)));
     }
 
     [Test]

@@ -41,6 +41,25 @@ export class LanguageServerController {
         context.subscriptions.push(LanguageServerController.client);
         context.subscriptions.push(vscode.commands.registerCommand(res.commandIdReloadWorkspace, () => LanguageServerController.reload()));
         context.subscriptions.push(vscode.commands.registerCommand(res.commandIdPickTargets, () => LanguageServerController.showQuickPickTargets()))
+        context.subscriptions.push(vscode.commands.registerCommand(res.commandIdCompletionHandler, async (documentPath: string, textEdit, isSnippet: boolean, cursorOffset: number) => {
+            const uri = vscode.Uri.parse(documentPath);
+            const editor = vscode.window.activeTextEditor;
+            const range = Extensions.toRange(textEdit.range);
+            if (editor?.document.uri.toString() !== uri.toString())
+                return;
+
+            if (isSnippet)
+                return await editor.insertSnippet(new vscode.SnippetString(textEdit.newText), range);
+
+            const newEdit = new vscode.WorkspaceEdit();
+            newEdit.replace(uri, range, textEdit.newText);
+            await vscode.workspace.applyEdit(newEdit);
+            if (cursorOffset > 0) {
+                const position = editor.document.positionAt(cursorOffset);
+                editor.selection = new vscode.Selection(position, position);
+                editor.revealRange(new vscode.Range(position, position));
+            }
+        }));
         context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async e => {
             const extName = path.extname(e.fileName);
             if (!Extensions.isProjectFile(e.fileName, true) && extName !== '.props')

@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using DotRush.Common.Extensions;
 using DotRush.Common.Logging;
 using DotRush.Roslyn.CodeAnalysis.Reflection;
@@ -14,6 +16,7 @@ using EmmyLua.LanguageServer.Framework.Protocol.Model.TextEdit;
 using EmmyLua.LanguageServer.Framework.Protocol.Model.Union;
 using EmmyLua.LanguageServer.Framework.Server.Handler;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
 using RoslynCompletionItem = Microsoft.CodeAnalysis.Completion.CompletionItem;
 using RoslynCompletionService = Microsoft.CodeAnalysis.Completion.CompletionService;
@@ -25,7 +28,7 @@ public class CompletionHandler : CompletionHandlerBase {
     private readonly ConfigurationService configurationService;
     private readonly CurrentClassLogger currentClassLogger;
 
-    private Dictionary<int, RoslynCompletionItem>? completionItemsCache;
+    private ConcurrentDictionary<int, RoslynCompletionItem> completionItemsCache;
     private RoslynCompletionService? completionService;
     private DocumentId? documentId;
     private int offset;
@@ -34,6 +37,7 @@ public class CompletionHandler : CompletionHandlerBase {
         this.workspaceService = workspaceService;
         this.configurationService = configurationService;
         this.currentClassLogger = new CurrentClassLogger(nameof(CompletionHandler));
+        this.completionItemsCache = new ConcurrentDictionary<int, RoslynCompletionItem>();
     }
 
     public override void RegisterCapability(ServerCapabilities serverCapabilities, ClientCapabilities clientCapabilities) {
@@ -61,9 +65,8 @@ public class CompletionHandler : CompletionHandlerBase {
             var typedSpan = completionService.GetDefaultCompletionListSpan(sourceText, offset);
             var completions = await completionService.GetCompletionsAsync(document, offset, configurationService, token).ConfigureAwait(false);
 
-            var completionItems = new List<CompletionItem>();
-            completionItemsCache = new Dictionary<int, RoslynCompletionItem>(completions.ItemsList.Count);
-            foreach (var item in completions.ItemsList) {
+            completionItemsCache.Clear();
+            var completionItems = await Task.WhenAll(completions.ItemsList.Select(async item => {
                 var id = item.GetHashCode();
                 var completionItem = new CompletionItem() {
                     Data = id,
@@ -77,14 +80,14 @@ public class CompletionHandler : CompletionHandlerBase {
                     Deprecated = item.Tags.Contains(InternalWellKnownTags.Deprecated),
                 };
 
-                if (item.ShouldResolveImmediately())
+                if (ShouldResolveImmediately(item))
                     await ResolveComplexItemAsync(completionService, item, completionItem, offset, document, sourceText, token).ConfigureAwait(false);
 
-                completionItems.Add(completionItem);
-                completionItemsCache.TryAdd(id, item);
-            }
+                completionItemsCache[id] = item;
+                return completionItem;
+            }));
 
-            return new CompletionResponse(completionItems);
+            return new CompletionResponse(completionItems.ToList());
         });
     }
     protected override Task<CompletionItem> Resolve(CompletionItem item, CancellationToken token) {
@@ -230,8 +233,8 @@ public class CompletionHandler : CompletionHandlerBase {
         // requested start to the new position, and from the new position to the end of the
         // string.
         int midpoint = newPosition - change.Span.Start;
-        var beforeText = CompletionExtensions.Escape(change.NewText.Substring(0, midpoint));
-        var afterText = CompletionExtensions.Escape(change.NewText.Substring(midpoint));
+        var beforeText = Escape(change.NewText.Substring(0, midpoint));
+        var afterText = Escape(change.NewText.Substring(midpoint));
         return ($"{beforeText}$0{afterText}", InsertTextFormat.Snippet);
     }
     private static void HandleNonInsertsectingEdit(SourceText sourceText, List<AnnotatedTextEdit> additionalTextEdits, ref int? adjustedNewPosition, TextChange textChange) {
@@ -248,5 +251,23 @@ public class CompletionHandler : CompletionHandlerBase {
         // document. If the new text was shorter, diff will be negative, and subtracting
         // will result in increasing the adjusted position as expected
         adjustedNewPosition = newPosition - diff;
+    }
+    private static bool ShouldResolveImmediately(RoslynCompletionItem item) {
+        if (!item.IsComplexTextEdit)
+            return false;
+
+        if (item.HasPriority() || item.Tags.Contains(WellKnownTags.Snippet))
+            return true; // .for case
+        if (item.Properties.TryGetValue("Modifiers", out var modifier) && modifier.Contains("Override"))
+            return true; // override case
+
+        return false;
+    }
+    private static string Escape(string snippet) {
+        if (snippet == null)
+            return string.Empty;
+#pragma warning disable SYSLIB1045
+        return Regex.Replace(snippet, @"([\\\$}])", @"\$1");
+#pragma warning restore SYSLIB1045
     }
 }
