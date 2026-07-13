@@ -173,7 +173,8 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider, vscod
             || kind === vscode.SymbolKind.Property
             || kind === vscode.SymbolKind.Field
             || kind === vscode.SymbolKind.Event
-            || kind === vscode.SymbolKind.EnumMember;
+            || kind === vscode.SymbolKind.EnumMember
+            || kind === vscode.SymbolKind.Constant;
     }
 
     private isDeclarationReference(location: vscode.Location, data: LensData): boolean {
